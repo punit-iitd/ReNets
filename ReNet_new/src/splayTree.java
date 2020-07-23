@@ -3,7 +3,8 @@ import java.util.Queue;
 
 public class splayTree<T extends Comparable<T>>
 {
-	int hops=0;
+	int hops=0;                                         //hops required for searching a node in its ego tree
+	int links=0;                                        //link changes while splaying a node(this is equal to links added and links deleted as both are same)
 	public Splay_node<T> root=new Splay_node<T>();
 	public void printTree()
 	{
@@ -27,24 +28,24 @@ public class splayTree<T extends Comparable<T>>
 			System.out.println();
 		}
 	}
-	public void set_root(T key)
+	public void set_root(T key)                           //initialization of the tree by setting a root
 	{
 		Splay_node<T> n=new Splay_node<T>();
 		n.key=key;
 		root=n;
 		((Coordinator<T>)(Driver.coord)).map.get(key).L.put(this,root);
 	}
-	public int parent_traversal(Splay_node<T> node)
+	public int parent_traversal(Splay_node<T> node)                   //function for calculating hops during traversing from parent to parent
 	{
 		if(node==null)
 			return 0;
 		return 1+parent_traversal(node.parent);
 	}
-	public Splay_node<T> insert(T key)
+	public Splay_node<T> insert(T key)                                //inserting a node in a binary search tree fashion
 	{
 		Splay_node<T>n=insert_helper(root,key);
-		((Coordinator<T>)(Driver.coord)).map.get(key).L.put(this,n);
-		return n;
+		((Coordinator<T>)(Driver.coord)).map.get(key).L.put(this,n);  //as mentioned L is a map that stores the location of a node in different trees mapped with the tree itself as a key
+		return n;                                                     //so whenever a node is inserted into a ego tree, its map L is updated here.
 	}
 	public Splay_node<T> insert_helper(Splay_node<T> node,T key)
 	{
@@ -76,9 +77,9 @@ public class splayTree<T extends Comparable<T>>
 				return insert_helper(node.right,key);
 		}
 		else
-			return node;                     // if node already exists then just return the pointer to it.
+			return node;                                              // if node already exists then just return the pointer to it
 	}
-	public Splay_node<T> search(T key)
+	public Splay_node<T> search(T key)                                //search a node in binary tree fashion and returns the pointer to it. Also it counts the hops required for searching
 	{
 		hops=-1;
 		search_helper(root,key);
@@ -114,35 +115,35 @@ public class splayTree<T extends Comparable<T>>
 			splay(node);
 		}
 	}
-	public Splay_node<T> inorder_successor(Splay_node<T> node)
+	public Splay_node<T> inorder_successor(Splay_node<T> node)    //finds the inorder successor of a node which is used when we delete a node and want to find a node to replace it(inorder predecessor also works) 
 	{
 		if(node.left==null)
 			return node;
 		else
 			return inorder_successor(node.left);
 	}
-	public void delete(T key)
-	{
+	public void delete(T key)                                     //deletes a node
+	{ 
 		delete_helper(root,key);
 	}
 	public void delete_helper(Splay_node<T> node,T key)
 	{
 		if(node.key.compareTo(key)==0)
 		{
-			if(node.left==null && node.right==null)
+			if(node.left==null && node.right==null)               //case where both child are null, then just delete it from the tree by setting the child pointer of its parent to null
 			{
 				if(node==node.parent.left)
 					node.parent.left=null;
 				else
 					node.parent.right=null;
 			}
-			else if(node.left==null && node.right!=null)
+			else if(node.left==null && node.right!=null)         //the following two cases are where one of the child is not null, then the child will take place of the node.
 			{
 				if(node==node.parent.left)
 				{
 					node.parent.left=node.right;
 					node.right.parent=node.parent;
-				}
+				}                                               
 				else
 				{
 					node.parent.right=node.right;
@@ -162,8 +163,8 @@ public class splayTree<T extends Comparable<T>>
 					node.left.parent=node.parent;
 				}
 			}
-			else
-			{
+			else                                                 //where both the child are not null. Here we find a inorder successor of the node and it take place of the node, satisfying the binary search property
+			{                                                    //inorder successor is the smallest key which is greater the the current key to be deleted.
 				Splay_node<T> n=inorder_successor(node.right);
 				Splay_node<T> parent=node.parent;
 				Splay_node<T> r=n.right;
@@ -200,8 +201,9 @@ public class splayTree<T extends Comparable<T>>
 		else
 			delete_helper(node.right,key);
 	}
-	public void splay(Splay_node<T> node)
-	{
+	public int splay(Splay_node<T> node)                      //this is the bottom up splay function which uses necessary left rotations and right rotations according to the cases.
+	{                                                         //this function also returns the total link changes in a splay operation which is just the sum of the link changes in left rotation and right rotation.
+		links=0;
 		while(true)
 		{
 			if(node.parent==null)
@@ -209,77 +211,94 @@ public class splayTree<T extends Comparable<T>>
 			if(node==node.parent.left)
 			{
 				if(node.parent.parent==null)
-					rotate_right(node.parent);
+					links+=rotate_right(node.parent);
 				else
 				{
-					if(node.parent==node.parent.parent.left)
+					if(node.parent==node.parent.parent.left)   //zig-zig case (left-left)
 					{
-						rotate_right(node.parent.parent);
-						rotate_right(node.parent);
+						links+=rotate_right(node.parent.parent);
+						links+=rotate_right(node.parent);
 					}
-					else
+					else                                       //zig-zag case (left-right)
 					{
-						rotate_right(node.parent);
-						rotate_left(node.parent);
+						links+=rotate_right(node.parent);
+						links+=rotate_left(node.parent);
 					}
 				}
 			}
 			else
 			{
 				if(node.parent.parent==null)
-					rotate_left(node.parent);
+					links+=rotate_left(node.parent);
 				else
 				{
-					if(node.parent==node.parent.parent.right)
+					if(node.parent==node.parent.parent.right)  //zig-zig case (right-right)
 					{
-						rotate_left(node.parent.parent);
-						rotate_left(node.parent);
+						links+=rotate_left(node.parent.parent);
+						links+=rotate_left(node.parent);
 					}
 					else
 					{
-						rotate_left(node.parent);
-						rotate_right(node.parent);
+						links+=rotate_left(node.parent);        //zig-zag case(right-left)
+						links+=rotate_right(node.parent);
 					}
 				}
 			}
 		}
+		return links;
 	}
-	public void rotate_right(Splay_node<T> node)
+	public int rotate_right(Splay_node<T> node)
 	{
+		int cnt=0;
 		Splay_node<T> parent=node.parent;
 		Splay_node<T> left=node.left;
 		Splay_node<T> right=node.left.right;
 		node.left=right;
 		if(right!=null)
-		    right.parent=node;
+		{
+			cnt++;
+			right.parent=node;
+		}
 		node.parent=left;
 		left.right=node;
 		left.parent=parent;
-		if(parent!=null) {
-		if(parent.left==node)
-			parent.left=left;
-		else
-			parent.right=left;}
+		if(parent!=null) 
+		{
+			cnt++;
+			if(parent.left==node)
+				parent.left=left;
+			else
+				parent.right=left;
+		}
 		else
 			root=left;
+		return cnt;
 	}
-	public void rotate_left(Splay_node<T> node)
+	public int rotate_left(Splay_node<T> node)
 	{
+		int cnt=0;
 		Splay_node<T> parent=node.parent;
 		Splay_node<T> right=node.right;
 		Splay_node<T> left=node.right.left;
 		node.right=left;
 		if(left!=null)
-		    left.parent=node;
+		{
+			cnt++;
+			left.parent=node;
+		}
 		node.parent=right;
 		right.left=node;
 		right.parent=parent;
-		if(parent!=null) {
-		if(parent.left==node)
-			parent.left=right;
-		else
-			parent.right=right;}
+		if(parent!=null) 
+		{
+			cnt++;
+			if(parent.left==node)
+				parent.left=right;
+			else
+				parent.right=right;
+		}
 		else
 			root=right;
+		return cnt;
 	}
 }

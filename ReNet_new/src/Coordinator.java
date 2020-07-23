@@ -24,25 +24,16 @@ public class Coordinator<T extends Comparable<T>> {
 	    process_request(src,dst);
 	    if(src.working_set.size()>threshold)
 	    	src.ego_tree.printTree();
-//	    if(map.get(2).working_set.size()>threshold)
-//	    	map.get(2).ego_tree.printTree();
+	    System.out.println();
 	}
 	public void process_request(Node<T> src,Node<T> dst)  //this function decides whether to answer the communication request or add a new route
 	{
+		double start=System.nanoTime();
 		if(src.status==0)                                 //src node is small
 		{
 			if(dst.status==0)                             //dst node is small
 			{
-				int bool=0;
-				for(int i=0;i<src.S.size();i++)           //finding for the destination in list S.
-				{
-					if(src.S.get(i)==dst)
-					{
-						bool=1;
-						break;
-					}
-				}
-				if(bool==0)                               //if dst not present is S, then send for add route
+				if(!src.S.containsKey(dst))                               //if dst not present is S, then send for add route
 				{
 					System.out.println("Adding Route between "+src.key+"(small)"+" "+dst.key+"(small)");
 					addRoute(src,dst);
@@ -97,9 +88,11 @@ public class Coordinator<T extends Comparable<T>> {
 				src.ego_tree.root.host=src; 
 				dst.ego_tree.splay(helper.relay);
 				dst.ego_tree.root.host=dst; 
-//				System.out.println(src.ego_tree.root.host.key+" "+dst.ego_tree.root.host.key);
 				System.out.println("Found the helper node( "+helper.represent+" ) and jumped to another tree in 1 hop and from there to root in "+g+" hops");}
 			}
+			double end=System.nanoTime();
+			double time_taken=end-start;
+			System.out.println(time_taken);
 		}
 	}
 	public int parent_traversal(Splay_node<T> node)
@@ -132,8 +125,8 @@ public class Coordinator<T extends Comparable<T>> {
 		//making the connection between the nodes
 		if(src.status==0 && dst.status==0)
 		{
-			src.S.add(dst);
-			dst.S.add(src);
+			src.S.put(dst,1);
+			dst.S.put(src,1);
 		}
 		else if(bool2==0 && src.status==0 && dst.status==1)
 		{
@@ -177,7 +170,6 @@ public class Coordinator<T extends Comparable<T>> {
 				n.working_set.get(i).ego_tree.root.host=null;
 				//just storing the large nodes, also remove this key from all the ego trees in which it was when it was small
 				n.working_set.get(i).ego_tree.delete(n.key);
-				n.working_set.get(i).working_set.remove(n);    //working set is updated after deletion
 				n.working_set.get(i).ego_tree.root.host=n.working_set.get(i);
 				large.add(n.working_set.get(i));
 			}

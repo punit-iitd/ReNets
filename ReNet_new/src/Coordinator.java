@@ -92,7 +92,7 @@ public class Coordinator<T extends Comparable<T>> {
 			}
 			double end=System.nanoTime();
 			double time_taken=end-start;
-			System.out.println(time_taken);
+			System.out.println(time_taken);          
 		}
 	}
 	public int parent_traversal(Splay_node<T> node)
@@ -101,17 +101,17 @@ public class Coordinator<T extends Comparable<T>> {
 			return 0;
 		return 1+parent_traversal(node.parent);
 	}
-	public void addRoute(Node<T> src,Node<T> dst)
+	public void addRoute(Node<T> src,Node<T> dst)                   //function for adding routes according to different cases(small-small,small-large,large-small,large,-large)
 	{
 		tot_workingSet_size+=2;
 //		if(tot_workingSet_size>nodes*threshold/2)
 //		{
 //			reset();
 //		}
-		int bool1=0;
-		int bool2=0;
+		int bool1=0;                                                //bool1 and bool2 are just to check whether the nodes have become large after makelarge or they were large initially
+		int bool2=0;                                                //because if they have become large after being send to makelarge, then all the additions and replaying is done there itself.
 		src.working_set.add(dst); 
-		if(src.status==0 && src.working_set.size()>threshold)
+		if(src.status==0 && src.working_set.size()>threshold)       //adding node to working set and then according to degree sending the node to makelarge function.    
 		{
 			bool1++;
 			makeLarge(src);
@@ -123,22 +123,22 @@ public class Coordinator<T extends Comparable<T>> {
 			makeLarge(dst);
 		}
 		//making the connection between the nodes
-		if(src.status==0 && dst.status==0)
+		if(src.status==0 && dst.status==0)                          //small-small case: just adding the nodes to each others small nodes list(S)
 		{
 			src.S.put(dst,1);
 			dst.S.put(src,1);
 		}
-		else if(bool2==0 && src.status==0 && dst.status==1)
+		else if(bool2==0 && src.status==0 && dst.status==1)        //small-large case: adding the src in the ego tree of dst
 		{
 			Splay_node<T> n=dst.ego_tree.insert(src.key);
 			dst.ego_tree.splay(n);
 		}
-		else if(bool1==0 && src.status==1 && dst.status==0)
+		else if(bool1==0 && src.status==1 && dst.status==0)        //large-small case: adding the dst in the ego tree of src
 		{
 			Splay_node<T> n=src.ego_tree.insert(dst.key);
 			src.ego_tree.splay(n);
 		}
-		else if(bool1==0 && bool2==0 && src.status==1 && dst.status==1)
+		else if(bool1==0 && bool2==0 && src.status==1 && dst.status==1)   //large-large case: find a suitable helper node and replay between src ego_tree and dst ego_tree
 		{
 			//find helper node
 			find_helper_node(src,dst);
@@ -153,17 +153,18 @@ public class Coordinator<T extends Comparable<T>> {
 		int x=0;
 		ArrayList<Node<T>> large=new ArrayList<>();
 		helper_nodes.remove(n.key);
-		for(int i=n.working_set.size()-1;i>=0;i--)     //starting to add the keys from backwards of working set as the last key should be at the root
+		for(int i=0;i<=n.working_set.size()-1;i++)     //starting to add the keys from working set and also performing splaying operation(to kind of maintain balances tree)
 		{
 			//only adding small nodes to the tree
 			if(n.working_set.get(i).status==0 && x==0)
 			{
-				ego_tree.set_root(n.working_set.get(i).key);
+				ego_tree.set_root(n.working_set.get(i).key); 
 				x++;
 			}
 			else if(n.working_set.get(i).status==0 && x!=0)
 			{
-				ego_tree.insert(n.working_set.get(i).key); 
+				Splay_node<T> h=ego_tree.insert(n.working_set.get(i).key);
+				ego_tree.splay(h);
 			}
 			else if(n.working_set.get(i).status==1)
 			{
@@ -171,20 +172,25 @@ public class Coordinator<T extends Comparable<T>> {
 				//just storing the large nodes, also remove this key from all the ego trees in which it was when it was small
 				n.working_set.get(i).ego_tree.delete(n.key);
 				n.working_set.get(i).ego_tree.root.host=n.working_set.get(i);
-				large.add(n.working_set.get(i));
+				large.add(n.working_set.get(i));                                        //storing all large nodes in a list
 			}
 		}
 		n.ego_tree=ego_tree;
 		n.ego_tree.root.host=n;
 		for(int i=0;i<large.size();i++)
 		{
-			find_helper_node(n,large.get(i));
+			Splay_node<T>[] arr=find_helper_node(n,large.get(i));
+			if(arr==null)                                                              //this means the network is reset
+				return;
 		}
 	}        //**** update the working set after finding helper node
-	public void find_helper_node(Node<T> node1,Node<T> node2)
+	public Splay_node<T>[] find_helper_node(Node<T> node1,Node<T> node2)
 	{
-		if(helper_nodes.size==0)
+		if(helper_nodes.size==0)                                                        //if there are no helper nodes, then reset the network
+		{
 			reset();
+			return null;
+		}
 		T helper=helper_nodes.get();
 		System.out.println(node1.key+" "+node2.key+" "+helper);
 		map.get(helper).num_helps++;
@@ -196,8 +202,10 @@ public class Coordinator<T extends Comparable<T>> {
 		tr2.represent=helper;
 		tr1.relay=tr2;
 		tr2.relay=tr1;
-		node1.ego_tree.splay(tr1);
-		node2.ego_tree.splay(tr2);
+		Splay_node<T>[] arr=new Splay_node[2];
+		arr[0]=tr1;
+		arr[1]=tr2;
+		return arr;
 	}
 	public void inorder(Splay_node<T> node,ArrayList<Splay_node<T>> ar)
 	{

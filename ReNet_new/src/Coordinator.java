@@ -140,8 +140,9 @@ public class Coordinator<T extends Comparable<T>> {
 		}
 		else if(bool1==0 && bool2==0 && src.status==1 && dst.status==1)   //large-large case: find a suitable helper node and replay between src ego_tree and dst ego_tree
 		{
-			//find helper node
-			find_helper_node(src,dst);
+			Splay_node<T>[]arr=find_helper_node(src,dst);
+			src.ego_tree.splay(arr[0]);
+			dst.ego_tree.splay(arr[1]);
 		}
 	}
 	public void makeLarge(Node<T> n)
